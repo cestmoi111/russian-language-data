@@ -1,0 +1,32 @@
+russian-language-data
+=====================
+
+This repository redistributes and builds upon third-party data. Per the
+CC BY-SA 4.0 ShareAlike terms, the datasets in this repository (the files under
+data/) are themselves licensed under Creative Commons Attribution-ShareAlike 4.0
+International (CC BY-SA 4.0) — see the LICENSE file.
+
+Sources and attribution
+-----------------------
+
+1. OpenRussian (https://en.openrussian.org/, https://github.com/Badestrand/russian-dictionary)
+   Licensed under CC BY-SA 4.0.
+   Used to build:
+     - data/stress-db.json       (word -> stress-marked form)
+     - data/aspect-pairs-db.json (imperfective/perfective verb pairs)
+   Changes made: the source CSV tables were parsed, filtered, deduplicated and
+   reshaped into two JSON lookup files; apostrophe stress marks were converted
+   to the combining acute accent (U+0301); placeholder/noise headwords were
+   dropped. See scripts/build-language-db.mjs for the exact transformation.
+
+Related projects credited by the consuming applications (not redistributed here)
+--------------------------------------------------------------------------------
+
+2. OpenCorpora (http://opencorpora.org/) — CC BY-SA — the morphological
+   dictionary behind pymorphy3, queried at runtime by consumers of this data;
+   its dictionary is not included in this repository.
+
+3. pymorphy3 (https://github.com/no-plagiarism/pymorphy3) — MIT licensed code.
+
+If you use these datasets, you must keep this attribution, indicate that changes
+were made, and license your redistribution under CC BY-SA 4.0.
