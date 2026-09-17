@@ -1,21 +1,23 @@
-// Regenerates the two offline language databases the site relies on:
-//
-//   lib/content/data/stress-db.json        bare form -> stress-marked form
-//   lib/content/data/aspect-pairs-db.json  imperfective/perfective pairs
-//
-// Source: the OpenRussian dataset (Badestrand/russian-dictionary, CC-BY-SA
-// 4.0). We pull the four CSV tables straight from GitHub raw so the build is
-// reproducible from a clean checkout with no vendored data:
+// Regenerates the language databases from the OpenRussian dataset
+// (Badestrand/russian-dictionary, CC BY-SA 4.0). We pull the four CSV tables
+// straight from GitHub raw so the build is reproducible from a clean checkout
+// with no vendored source data:
 //
 //   node scripts/build-language-db.mjs
 //
-// OpenRussian marks stress with an apostrophe placed AFTER the stressed vowel
-// ("сказа'ть"). The rest of the codebase (lib/content/stress.ts) marks stress
-// with the combining acute U+0301 sitting right after the vowel, so we convert
-// on the way in — that way lookupStress() output plugs straight into
-// stripStress()/toSpeechKitStress() without a second convention to reconcile.
+// Outputs (data/):
+//   stress-db.json        headword       -> stress-marked form(s)
+//   aspect-pairs-db.json  [{ impf, perf, gloss }]
+//   stress-forms-db.json  lemma          -> { inflected form -> accented form }
+//   forms/<letter>.json   stress-forms-db sharded by the lemma's first letter,
+//                         so a consumer can fetch just one shard at runtime
+//                         instead of the whole ~27 MB paradigm map.
+//
+// OpenRussian marks stress with an apostrophe after the stressed vowel
+// ("сказа'ть"); we convert it to the combining acute U+0301 used across the
+// consuming app, so a value plugs straight into stripStress()/toSpeechKitStress().
 
-import { writeFile } from "node:fs/promises";
+import { writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -23,46 +25,45 @@ const COMBINING_ACUTE = "́";
 const RAW = "https://raw.githubusercontent.com/Badestrand/russian-dictionary/master";
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "data");
 
-// Normalize an accented headword to the project's convention: a single
-// combining acute (U+0301) right after the stressed vowel. The source marks
-// stress with an apostrophe, but a minority of rows use a grave or a
-// pre-composed accented Latin vowel instead, so fold those to the acute too,
-// and repair the Latin-"ë"-for-"ё" mis-encoding while we're here.
+// ё and й both DECOMPOSE under NFD (ё -> е + U+0308, й -> и + U+0306), and the
+// diacritic-stripping below would then silently turn them into е / и. So we
+// swap them out for private placeholders before NFD and swap them back after.
+// Latin "ë" is the source's frequent mis-encoding of ё, folded in here too.
+const protectYo = (s) => s.replace(/[ёЁËë]/g, "").replace(/[йЙ]/g, "");
+const restoreYo = (s) => s.replaceAll("", "ё").replaceAll("", "й");
+
+// Normalize an accented form to the app's convention: a single combining acute
+// right after the stressed vowel. The source marks stress with an apostrophe,
+// but a minority of rows use a grave or a pre-composed accented vowel, so fold
+// those to the acute too.
 const toAcute = (s) =>
-  (s || "")
-    .replace(/[ёЁËë]/g, "")
-    .normalize("NFD")
-    .replace(/['`̀́]/g, COMBINING_ACUTE) // apostrophe/grave -> acute
-    .replace(/[̂-ͯ]/g, "") // drop any other stray combining marks
-    .replaceAll("", "ё")
-    .trim();
+  restoreYo(
+    protectYo(s || "")
+      .normalize("NFD")
+      .replace(/['`̀́]/g, COMBINING_ACUTE) // apostrophe/grave -> acute
+      .replace(/[̂-ͯ]/g, "") // drop any other stray combining marks
+  ).trim();
 
 // OpenRussian uses "-" / "_" as placeholder headwords for a handful of rows
-// (defective verbs whose only real member is the partner). Guard against them
-// so those placeholders never leak into either database as if they were words.
+// (defective verbs whose only real member is the partner). Guard against them.
 const isWord = (s) => /^[а-яё]{2,}(-[а-яё]+)*$/i.test(s || "");
 
-// A bare, lookup-ready lemma: no stress marks of any kind (apostrophe, or any
-// combining diacritic — the source mixes acute/grave/dot marks), Latin "ë"
-// folded to "ё", lowercased. Aspect lookups key on this so a marked or noisy
-// partner form still matches. Callers gate the result through isWord(), which
-// rejects anything with leftover Latin letters.
+// A bare, lookup-ready form: no stress marks of any kind, "ё"/"й" preserved,
+// lowercased. Callers gate the result through isWord(), which rejects anything
+// with leftover Latin letters or placeholder junk.
 const bareLemma = (s) =>
-  (s || "")
-    // Protect ё before NFD (which would split it into е + combining diaeresis
-    // and then lose the dots to the strip below). Latin "ë" is the source's
-    // frequent mis-encoding of ё, so fold it in here too.
-    .replace(/[ёЁËë]/g, "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // strip acute/grave/dot stress marks
-    .replace(/['`]/g, "")
-    .replaceAll("", "ё")
+  restoreYo(
+    protectYo(s || "")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/['`]/g, "")
+  )
     .toLowerCase()
     .trim();
 
 // Both the headword and partner cells are sometimes a list of alternatives
-// joined by "," or ";", and some entries are the "-" placeholder. Take the
-// first real word.
+// joined by "," or ";", some entries being the "-" placeholder. Take the first
+// real word.
 const firstForm = (cell) =>
   (cell || "").split(/[,;]/).map(bareLemma).find(isWord) || "";
 
@@ -84,24 +85,24 @@ async function fetchTable(name) {
   return parseTsv(await res.text());
 }
 
+// Keep only a stress-bearing form: an explicit acute, or a "ё" (always stressed
+// so it needs no mark). Unmarked monosyllables carry no useful stress info.
+const marksStress = (val) => !!val && (val.includes(COMBINING_ACUTE) || val.includes("ё"));
+
 async function main() {
   const [nouns, verbs, adjectives, others] = await Promise.all(
     ["nouns", "verbs", "adjectives", "others"].map(fetchTable)
   );
 
-  // ---- stress-db: bare (lowercase) -> accented form(s) --------------------
-  // Homographs with different stress (за́мок / замо́к) genuinely have two
-  // answers, so the value is a string OR an array of strings. A single answer
-  // stays a plain string to keep the file small and lookups trivial.
+  // ---- stress-db: headword (lowercase) -> accented form(s) ----------------
+  // Heterographs with different stress (за́мок / замо́к) map to an array; a
+  // single answer stays a plain string to keep the file small.
   const stress = new Map();
   const addStress = (bare, accented) => {
     const key = bareLemma(bare);
     if (!isWord(key)) return;
     const val = toAcute(accented);
-    // Keep a form only if it actually pins the stress: either an explicit acute
-    // mark, or a "ё" (always stressed, so it needs no mark). Unmarked
-    // monosyllables carry no useful stress info and are skipped.
-    if (!val || (!val.includes(COMBINING_ACUTE) && !val.includes("ё"))) return;
+    if (!marksStress(val)) return;
     const cur = stress.get(key);
     if (cur === undefined) stress.set(key, val);
     else if (Array.isArray(cur)) { if (!cur.includes(val)) cur.push(val); }
@@ -115,9 +116,6 @@ async function main() {
     stressObj[k] = v;
 
   // ---- aspect-pairs-db: {impf, perf, gloss} -------------------------------
-  // Each verb row carries its own aspect and the bare form of its partner.
-  // We resolve a pair from whichever side we're on, dedupe by impf|perf, and
-  // take the English gloss from the imperfective member when we have it.
   const byBare = new Map(verbs.map((v) => [firstForm(v.bare), v]));
   const pairs = new Map();
   for (const v of verbs) {
@@ -128,22 +126,76 @@ async function main() {
     if (v.aspect === "imperfective") { impf = self; perf = partner; }
     else if (v.aspect === "perfective") { impf = partner; perf = self; }
     else continue; // biaspectual / unknown -> no clean pair
-    if (!isWord(impf) || !isWord(perf)) continue; // skip placeholder headwords
+    if (!isWord(impf) || !isWord(perf)) continue;
     const key = `${impf}|${perf}`;
     if (pairs.has(key)) continue;
     const impfRow = byBare.get(impf);
-    const gloss = ((impfRow?.translations_en) || v.translations_en || "")
-      .split(",")[0]
-      .trim();
+    const gloss = ((impfRow?.translations_en) || v.translations_en || "").split(",")[0].trim();
     pairs.set(key, { impf, perf, gloss });
   }
   const pairsArr = [...pairs.values()].sort((a, b) => a.impf.localeCompare(b.impf, "ru"));
 
+  // ---- stress-forms-db: lemma -> { inflected bare form -> accented } -------
+  // The flat stress-db is keyed by headword only, so it cannot stress an
+  // inflected word (челове́ку, сказа́л, но́вого) — and a flat inflected map would
+  // mis-stress cross-lemma heterographs (стекла́ vs стёкла). This paradigm map
+  // is keyed BY LEMMA, so a page that already knows the lemma (declension /
+  // conjugation) gets the correct stress for every one of its own forms. Every
+  // non-metadata column is an inflected form; cells may list comma-separated
+  // variants (e.g. an animate/inanimate accusative).
+  const NOUN_META = new Set(["bare","accented","translations_en","translations_de","gender","partner","animate","indeclinable","sg_only","pl_only"]);
+  const VERB_META = new Set(["bare","accented","translations_en","translations_de","aspect","partner"]);
+  const ADJ_META = new Set(["bare","accented","translations_en","translations_de"]);
+
+  const forms = {}; // lemma -> { formBare: accented }
+  const addForms = (table, meta) => {
+    for (const r of table) {
+      const lemma = firstForm(r.bare);
+      if (!isWord(lemma)) continue;
+      const map = forms[lemma] || (forms[lemma] = {});
+      const cells = [r.accented, ...Object.entries(r).filter(([c]) => !meta.has(c)).map(([, v]) => v)];
+      for (const cell of cells) {
+        for (const variant of (cell || "").split(",")) {
+          const b = bareLemma(variant);
+          const acc = toAcute(variant);
+          if (!isWord(b) || !marksStress(acc)) continue;
+          if (map[b] === undefined) map[b] = acc; // first attested wins
+        }
+      }
+      if (Object.keys(map).length === 0) delete forms[lemma];
+    }
+  };
+  addForms(nouns, NOUN_META);
+  addForms(verbs, VERB_META);
+  addForms(adjectives, ADJ_META);
+
+  const formsObj = {};
+  for (const k of Object.keys(forms).sort((a, b) => a.localeCompare(b, "ru"))) formsObj[k] = forms[k];
+
+  // Shard the paradigm map by the lemma's first letter so consumers can fetch
+  // one ~1 MB slice at runtime instead of the whole file.
+  const shardKey = (lemma) => {
+    const c = lemma[0];
+    return /[а-яё]/.test(c) ? c : "_";
+  };
+  const shards = {};
+  for (const [lemma, map] of Object.entries(formsObj)) {
+    const k = shardKey(lemma);
+    (shards[k] || (shards[k] = {}))[lemma] = map;
+  }
+
+  await mkdir(join(OUT_DIR, "forms"), { recursive: true });
   await writeFile(join(OUT_DIR, "stress-db.json"), JSON.stringify(stressObj), "utf8");
   await writeFile(join(OUT_DIR, "aspect-pairs-db.json"), JSON.stringify(pairsArr), "utf8");
+  await writeFile(join(OUT_DIR, "stress-forms-db.json"), JSON.stringify(formsObj), "utf8");
+  for (const [k, map] of Object.entries(shards))
+    await writeFile(join(OUT_DIR, "forms", `${k}.json`), JSON.stringify(map), "utf8");
 
+  const formCount = Object.values(formsObj).reduce((n, m) => n + Object.keys(m).length, 0);
   console.log(`stress-db.json:        ${Object.keys(stressObj).length} headwords`);
   console.log(`aspect-pairs-db.json:  ${pairsArr.length} pairs`);
+  console.log(`stress-forms-db.json:  ${Object.keys(formsObj).length} lemmas, ${formCount} forms`);
+  console.log(`forms/ shards:         ${Object.keys(shards).length}`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
