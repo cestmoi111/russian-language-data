@@ -135,6 +135,58 @@ async function main() {
   }
   const pairsArr = [...pairs.values()].sort((a, b) => a.impf.localeCompare(b.impf, "ru"));
 
+  // ---- translations-db: lemma -> curated dictionary entry ----------------
+  // OpenRussian carries hand-written translations (translations_en /
+  // translations_de) alongside every headword. That is lexicographer data, the
+  // same kind ABBYY Lingvo is built on, and it is what makes a word lookup
+  // read like a dictionary entry instead of a machine-translation guess.
+  // Shape: bare lemma -> { pos, accented, en: [...], de: [...] }
+  const splitGlosses = (cell) =>
+    String(cell || "")
+      .split(/[,;]/)
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .slice(0, 6);
+
+  const translations = {};
+  const addTranslation = (row, pos) => {
+    const key = bareLemma(firstForm(row.bare));
+    if (!isWord(key)) return;
+    const en = splitGlosses(row.translations_en);
+    const de = splitGlosses(row.translations_de);
+    if (!en.length && !de.length) return;
+    const prev = translations[key];
+    if (prev) {
+      // одна и та же форма у разных частей речи: копим, не затираем
+      for (const g of en) if (!prev.en.includes(g)) prev.en.push(g);
+      for (const g of de) if (!prev.de.includes(g)) prev.de.push(g);
+      return;
+    }
+    const entry = { pos, en, de };
+    if (pos === "noun" && row.gender) entry.gender = row.gender;
+    if (pos === "verb" && row.aspect) entry.aspect = row.aspect;
+    translations[key] = entry;
+  };
+  for (const r of nouns) addTranslation(r, "noun");
+  for (const r of verbs) addTranslation(r, "verb");
+  for (const r of adjectives) addTranslation(r, "adjective");
+  for (const r of others) addTranslation(r, "other");
+
+  // Формат статьи: { t: [значения], pos, g: род, a: вид }. Короткие ключи —
+  // файл читает сервер, а не человек, и каждый байт здесь умножается на 55k.
+  const byLang = { en: {}, de: {} };
+  for (const k of Object.keys(translations).sort((a, b) => a.localeCompare(b, "ru"))) {
+    const e = translations[k];
+    for (const lang of ["en", "de"]) {
+      const list = e[lang];
+      if (!list.length) continue;
+      const rec = { t: list, pos: e.pos };
+      if (e.gender) rec.g = e.gender;
+      if (e.aspect) rec.a = e.aspect;
+      byLang[lang][k] = rec;
+    }
+  }
+
   // ---- stress-forms-db: lemma -> { inflected bare form -> accented } -------
   // The flat stress-db is keyed by headword only, so it cannot stress an
   // inflected word (челове́ку, сказа́л, но́вого) — and a flat inflected map would
@@ -187,6 +239,11 @@ async function main() {
   await mkdir(join(OUT_DIR, "forms"), { recursive: true });
   await writeFile(join(OUT_DIR, "stress-db.json"), JSON.stringify(stressObj), "utf8");
   await writeFile(join(OUT_DIR, "aspect-pairs-db.json"), JSON.stringify(pairsArr), "utf8");
+  console.log(`translations/en.json:    ${Object.keys(byLang.en).length} headwords`);
+  console.log(`translations/de.json:    ${Object.keys(byLang.de).length} headwords`);
+  await mkdir(join(OUT_DIR, "translations"), { recursive: true });
+  for (const [lang, obj] of Object.entries(byLang))
+    await writeFile(join(OUT_DIR, "translations", `${lang}.json`), JSON.stringify(obj), "utf8");
   await writeFile(join(OUT_DIR, "stress-forms-db.json"), JSON.stringify(formsObj), "utf8");
   for (const [k, map] of Object.entries(shards))
     await writeFile(join(OUT_DIR, "forms", `${k}.json`), JSON.stringify(map), "utf8");

@@ -12,21 +12,32 @@ Sources and attribution
 1. OpenRussian (https://en.openrussian.org/, https://github.com/Badestrand/russian-dictionary)
    Licensed under CC BY-SA 4.0.
    Used to build:
-     - data/stress-db.json       (word -> stress-marked form)
-     - data/aspect-pairs-db.json (imperfective/perfective verb pairs)
+     - data/stress-db.json          (word -> stress-marked form)
+     - data/aspect-pairs-db.json    (imperfective/perfective verb pairs)
+     - data/translations/en.json    (English dictionary entries)
+     - data/translations/de.json    (German dictionary entries)
    Changes made: the source CSV tables were parsed, filtered, deduplicated and
    reshaped into two JSON lookup files; apostrophe stress marks were converted
    to the combining acute accent (U+0301); placeholder/noise headwords were
    dropped. See scripts/build-language-db.mjs for the exact transformation.
 
+2. WikDict (https://www.wikdict.com/)
+   Licensed under CC BY-SA 3.0, built from Wiktionary via DBnary.
+   Used to build:
+     - data/translations/fr.json, es.json, it.json, nl.json, zh.json
+   Changes made: the per-pair SQLite dictionaries were read, low-confidence
+   pairs (WikDict score below 20) and non-word headwords were dropped, the
+   gloss list was split and capped at six entries, and the result reshaped into
+   the JSON lookup files above. See scripts/build-translations.mjs.
+
 Related projects credited by the consuming applications (not redistributed here)
 --------------------------------------------------------------------------------
 
-2. OpenCorpora (http://opencorpora.org/) — CC BY-SA — the morphological
+3. OpenCorpora (http://opencorpora.org/) — CC BY-SA — the morphological
    dictionary behind pymorphy3, queried at runtime by consumers of this data;
    its dictionary is not included in this repository.
 
-3. pymorphy3 (https://github.com/no-plagiarism/pymorphy3) — MIT licensed code.
+4. pymorphy3 (https://github.com/no-plagiarism/pymorphy3) — MIT licensed code.
 
 If you use these datasets, you must keep this attribution, indicate that changes
 were made, and license your redistribution under CC BY-SA 4.0.
