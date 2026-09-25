@@ -14,6 +14,7 @@ Sources and attribution
    Used to build:
      - data/stress-db.json          (word -> stress-marked form)
      - data/aspect-pairs-db.json    (imperfective/perfective verb pairs)
+     - data/aspect-db.json          (verb aspect + pairs; with OpenCorpora, below)
      - data/translations/en.json    (English dictionary entries)
      - data/translations/de.json    (German dictionary entries)
    Changes made: the source CSV tables were parsed, filtered, deduplicated and
@@ -30,14 +31,23 @@ Sources and attribution
    gloss list was split and capped at six entries, and the result reshaped into
    the JSON lookup files above. See scripts/build-translations.mjs.
 
-Related projects credited by the consuming applications (not redistributed here)
---------------------------------------------------------------------------------
+3. OpenCorpora (http://opencorpora.org/)
+   Licensed under CC BY-SA. The morphological dictionary behind pymorphy3.
+   Used to build:
+     - data/aspect-db.json          (the aspect grammeme of every verb lemma,
+                                     and the check that flips or drops a
+                                     contradictory OpenRussian pair)
+   Changes made: verb lemmas were extracted from the dictionary, bucketed by
+   aspect, merged with the OpenRussian pairs and reshaped into the JSON lookup
+   file above. See scripts/build-aspect-db.py. The OpenCorpora dictionary
+   itself is not included in this repository; it is also queried at runtime by
+   consumers of this data.
 
-3. OpenCorpora (http://opencorpora.org/) — CC BY-SA — the morphological
-   dictionary behind pymorphy3, queried at runtime by consumers of this data;
-   its dictionary is not included in this repository.
+Related projects (code, not redistributed here)
+-----------------------------------------------
 
-4. pymorphy3 (https://github.com/no-plagiarism/pymorphy3) — MIT licensed code.
+4. pymorphy3 (https://github.com/no-plagiarism/pymorphy3) — MIT licensed code,
+   used as the reader for the OpenCorpora dictionary above.
 
 If you use these datasets, you must keep this attribution, indicate that changes
 were made, and license your redistribution under CC BY-SA 4.0.

@@ -8,7 +8,8 @@ aspectual pairs** and **bilingual dictionary entries**, generated from
 | File | Contents | Entries |
 |------|----------|--------:|
 | `data/stress-db.json` | bare lowercase form → stress-marked form(s) | ~53k |
-| `data/aspect-pairs-db.json` | `[{ impf, perf, gloss }]` imperfective/perfective pairs | ~7.7k |
+| `data/aspect-db.json` | verb → aspect, and every attested impf/perf pair | 33k verbs / 11k pairs |
+| `data/aspect-pairs-db.json` | `[{ impf, perf, gloss }]` imperfective/perfective pairs (superseded by `aspect-db.json`) | ~7.7k |
 | `data/translations/en.json` | headword → dictionary entry, English | ~46k |
 | `data/translations/de.json` | headword → dictionary entry, German | ~53k |
 | `data/translations/fr.json` | headword → dictionary entry, French | ~25k |
@@ -51,8 +52,32 @@ after the stressed vowel. A word with more than one attested stress
 
 `ё` is always stressed and carries no extra mark.
 
-**`aspect-pairs-db.json`** — a JSON array of pairs, sorted by the imperfective
-member. `gloss` is a short English gloss (may be empty):
+**`aspect-db.json`** — the aspect of every verb, and every pair:
+
+```json
+{
+  "aspect": { "impf": ["читать", …], "perf": ["прочитать", …], "both": ["считать", …] },
+  "pairs":  [ ["считывать", "считать", "read off", "or"], … ]
+}
+```
+
+`aspect` buckets all ~33k verb lemmas OpenCorpora knows, reflexives included.
+`both` means the one spelling carries both grammemes — a biaspectual verb
+(*использовать*) or two homographs (*считать*: imperfective "consider",
+perfective "read off").
+
+`pairs` are `[imperfective, perfective, gloss, source]`, sorted by the
+imperfective member; `source` is `"or"` (OpenRussian's partner column) or
+`"refl"` (the reflexive of a pair of plain verbs, added when OpenCorpora knows
+the reflexive — this is how *считываться/считаться* gets in).
+
+**A verb can appear in several pairs with a different aspect in each**, and a
+lookup must keep them all: *считаться* is imperfective in *считаться/счесться*
+and perfective in *считываться/считаться*. Picking one pair per headword is
+what the older `aspect-pairs-db.json` did, and it labels half of these wrong.
+
+**`aspect-pairs-db.json`** — the older flat list, kept for existing consumers.
+A JSON array of pairs, sorted by the imperfective member:
 
 ```json
 [
@@ -64,11 +89,15 @@ member. `gloss` is a short English gloss (may be empty):
 ## Regenerating
 
 ```bash
-node scripts/build-language-db.mjs
+node scripts/build-language-db.mjs    # stress, aspect pairs, translations
+python scripts/build-aspect-db.py     # aspect-db.json (needs pymorphy3)
 ```
 
-The script fetches the OpenRussian CSV tables from GitHub raw and writes both
-JSON files into `data/`. No source data is vendored in this repository.
+The scripts fetch the OpenRussian CSV tables from GitHub raw and write the JSON
+files into `data/`. No source data is vendored in this repository. The aspect
+builder additionally reads the OpenCorpora dictionary shipped with
+[pymorphy3](https://github.com/no-plagiarism/pymorphy3) (`pip install pymorphy3`)
+for the per-verb aspect grammeme.
 
 ## Consuming from another project
 
