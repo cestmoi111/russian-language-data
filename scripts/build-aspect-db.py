@@ -36,9 +36,12 @@ Output (data/aspect-db.json)
       "pairs":  [ ["считывать", "считать", "read off", "or"], ... ]
     }
 
-  aspect  - every verb lemma OpenCorpora knows, bucketed. "both" means the one
-            lemma carries both grammemes: either a genuinely biaspectual verb
-            (использовать) or two homographic verbs (считать).
+  aspect  - every verb lemma OpenCorpora knows, bucketed by ITS OWN verdict.
+            "both" means the one lemma carries both grammemes: either a
+            genuinely biaspectual verb (использовать) or two homographic verbs
+            (считать). A pair may still attest an aspect this table does not
+            list, so a consumer reads both keys: the bucket is the dictionary
+            label, the pairs are what that verb pairs with in each reading.
   pairs   - [imperfective, perfective, gloss, source]; source is "or"
             (OpenRussian) or "refl" (derived reflexive). Sorted by the
             imperfective member. Arrays, not objects: 11k records, and the key
@@ -170,14 +173,12 @@ def main():
             if add(r_impf, r_perf, gloss, "refl"):
                 derived += 1
 
-    # A derived pair can attest an aspect OpenCorpora does not list: "считаться"
-    # is imperfective there, and perfective only as the partner of считываться.
-    # Fold that evidence back into the aspect table, or the label and the pair
-    # we print would contradict each other.
-    for impf, perf, _gloss, _src in pairs.values():
-        oc[impf].add("impf")
-        oc[perf].add("perf")
-
+    # The aspect buckets stay OpenCorpora's own verdict, NOT the union with the
+    # pairs. A derived pair can attest an aspect OpenCorpora does not list -
+    # "считаться" is imperfective there and perfective only as the partner of
+    # считываться - and a consumer needs to tell the dictionary reading (the
+    # label to print) from the one the pairs imply (a second line, if it shows
+    # one at all). Union the two and that distinction is gone.
     buckets = {"impf": [], "perf": [], "both": []}
     for lemma in sorted(oc):
         a = oc[lemma]
