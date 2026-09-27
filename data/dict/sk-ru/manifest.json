@@ -1,0 +1,8 @@
+{
+  "pair": "sk-ru",
+  "buckets": 16,
+  "hash": "fnv1a32-utf16",
+  "entries": 11983,
+  "forms": 42312,
+  "bytes": 2973447
+}

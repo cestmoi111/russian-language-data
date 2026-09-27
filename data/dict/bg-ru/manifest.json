@@ -1,0 +1,8 @@
+{
+  "pair": "bg-ru",
+  "buckets": 32,
+  "hash": "fnv1a32-utf16",
+  "entries": 15297,
+  "forms": 122948,
+  "bytes": 7919313
+}

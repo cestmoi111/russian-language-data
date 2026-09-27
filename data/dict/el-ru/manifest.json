@@ -1,0 +1,8 @@
+{
+  "pair": "el-ru",
+  "buckets": 32,
+  "hash": "fnv1a32-utf16",
+  "entries": 16031,
+  "forms": 118611,
+  "bytes": 8677375
+}

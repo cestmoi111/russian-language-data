@@ -1,0 +1,8 @@
+{
+  "pair": "ja-ru",
+  "buckets": 32,
+  "hash": "fnv1a32-utf16",
+  "entries": 16779,
+  "forms": 129751,
+  "bytes": 7340902
+}

@@ -1,0 +1,8 @@
+{
+  "pair": "fr-ru",
+  "buckets": 64,
+  "hash": "fnv1a32-utf16",
+  "entries": 38217,
+  "forms": 177201,
+  "bytes": 14107163
+}
