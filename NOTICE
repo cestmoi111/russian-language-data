@@ -50,7 +50,7 @@ Sources and attribution
    Read through the wiktextract extractions published by kaikki.org
    (Tatu Ylonen, https://kaikki.org/, https://github.com/tatuylonen/wiktextract).
    Used to build:
-     - data/dict/<pair>/             (bilingual dictionaries, 27 languages)
+     - data/dict/<pair>/             (bilingual dictionaries, 24 languages)
    Changes made: senses, glosses, usage labels, examples, translation tables
    and inflection tables were extracted; entries of different editions were
    merged per headword, translations scored and ranked, glosses split into

@@ -1,8 +1,0 @@
-{
-  "pair": "lt-ru",
-  "buckets": 16,
-  "hash": "fnv1a32-utf16",
-  "entries": 13350,
-  "forms": 115141,
-  "bytes": 5291016
-}

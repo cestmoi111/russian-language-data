@@ -1,11 +1,12 @@
-"""The 27 languages paired with Russian, and how Wiktionary spells them."""
+"""The 24 languages paired with Russian, and how Wiktionary spells them."""
 
 import re
 
-# Same set as THE LEV extension (langs.js); zh-CN and zh-TW share one dictionary.
+# THE LEV extension's languages (langs.js) minus sl, lt, bg, whose Wiktionary
+# coverage was too thin; zh-CN and zh-TW share one dictionary.
 TARGETS = [
-    "en", "es", "fr", "de", "it", "pt", "nl", "pl", "cs", "sk", "sl", "bg", "sr",
-    "hr", "ro", "el", "hu", "fi", "sv", "no", "da", "lt", "lv", "et", "tr", "zh", "ja",
+    "en", "es", "fr", "de", "it", "pt", "nl", "pl", "cs", "sk", "sr",
+    "hr", "ro", "el", "hu", "fi", "sv", "no", "da", "lv", "et", "tr", "zh", "ja",
 ]
 _T = set(TARGETS)
 

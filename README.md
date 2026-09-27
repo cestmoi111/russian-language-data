@@ -17,7 +17,7 @@ aspectual pairs** and **bilingual dictionary entries**, generated from
 | `data/translations/it.json` | headword → dictionary entry, Italian | ~17k |
 | `data/translations/nl.json` | headword → dictionary entry, Dutch | ~9k |
 | `data/translations/zh.json` | headword → dictionary entry, Chinese | ~3k |
-| `data/dict/<pair>/` | bilingual dictionaries, Russian ↔ 27 languages, sharded (see below) | ~1.5M articles |
+| `data/dict/<pair>/` | bilingual dictionaries, Russian ↔ 24 languages, sharded (see below) | ~1.4M articles |
 
 One file per language, so a consumer downloads only the language it needs.
 
@@ -89,9 +89,10 @@ A JSON array of pairs, sorted by the imperfective member:
 
 ## Bilingual dictionaries: `data/dict/`
 
-Two dictionaries for each of 27 languages, Russian to the language and back
-(`ru-fr`, `fr-ru`, …): en es fr de it pt nl pl cs sk sl bg sr hr ro el hu fi
-sv no da lt lv et tr zh ja. Built from Wiktionary, read through the
+Two dictionaries for each of 24 languages, Russian to the language and back
+(`ru-fr`, `fr-ru`, …): en es fr de it pt nl pl cs sk sr hr ro el hu fi sv no
+da lv et tr zh ja. Slovenian, Lithuanian and Bulgarian were built too and
+dropped: Wiktionary answered under half of their frequent words. Built from Wiktionary, read through the
 [wiktextract](https://github.com/tatuylonen/wiktextract) extractions published
 on [kaikki.org](https://kaikki.org/): the English and Russian editions, plus
 the edition written in the language itself where kaikki publishes one (fr de
@@ -150,8 +151,6 @@ the rest are names and English words.
 | Polish (`pl`) | 36,834 | 36,679 | 89.7% | 89.9% | 28 MB |
 | Czech (`cs`) | 23,109 | 25,715 | 86.7% | 82.4% | 14 MB |
 | Slovak (`sk`) | 15,419 | 11,983 | 77.8% | 58.4% | 5 MB |
-| Slovenian (`sl`) | 12,293 | 9,261 | 76.2% | 37.2% | 4 MB |
-| Bulgarian (`bg`) | 18,183 | 15,297 | 85.0% | 44.4% | 11 MB |
 | Serbian (`sr`) | 13,982 | 16,045 | 76.3% | 61.7% | 9 MB |
 | Croatian (`hr`) | 14,319 | 10,523 | 79.0% | 53.0% | 6 MB |
 | Romanian (`ro`) | 15,533 | 13,439 | 82.1% | 67.7% | 7 MB |
@@ -161,7 +160,6 @@ the rest are names and English words.
 | Swedish (`sv`) | 22,700 | 20,637 | 85.9% | 83.5% | 10 MB |
 | Norwegian (`no`) | 15,596 | 15,532 | 81.6% | 76.2% | 6 MB |
 | Danish (`da`) | 15,631 | 15,400 | 81.8% | 76.3% | 6 MB |
-| Lithuanian (`lt`) | 13,959 | 13,350 | 76.3% | 35.8% | 7 MB |
 | Latvian (`lv`) | 13,304 | 11,214 | 74.8% | 59.1% | 5 MB |
 | Estonian (`et`) | 13,796 | 11,188 | 73.6% | 70.0% | 7 MB |
 | Turkish (`tr`) | 18,281 | 26,356 | 84.1% | 69.7% | 51 MB |
