@@ -2,7 +2,7 @@
   "pair": "pt-ru",
   "buckets": 32,
   "hash": "fnv1a32-utf16",
-  "entries": 23387,
-  "forms": 138838,
-  "bytes": 7902226
+  "entries": 23400,
+  "forms": 138847,
+  "bytes": 7904482
 }

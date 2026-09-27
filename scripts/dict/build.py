@@ -19,6 +19,7 @@ each with its translations, labels and short examples):
            scored by how many sources agree and by word frequency.
 """
 
+import math
 import os
 import re
 import sys
@@ -78,6 +79,8 @@ LEAD = re.compile(r"^(to|a|an|the|le|la|les|l'|l’|un|une|des|du|se|s')\s+", re
 ABBR = re.compile(r"^(?:[а-яё]{2,8}\.\s*,?\s*)+")
 # Words a real equivalent never ends with, and phrases that are only commentary.
 TAIL = {"et", "and", "ou", "or", "и", "или", "de", "of", "à", "to", "the", "le", "la"}
+# A bare article or particle is never a translation ("большой" -> "the").
+STOP = {"the", "a", "an", "to", "le", "la", "les", "un", "une", "der", "die", "das", "el", "il", ")"}
 META = {"par extension", "by extension", "figuratively", "figurément", "etc", "и т. д",
         "и т. п", "в частности", "не переводится", "especially", "en particulier", "notamment"}
 
@@ -113,6 +116,12 @@ SR_LAT = dict(zip("абвгдђежзијклљмнњопрстћуфхцчџш"
 
 def sr_latin(s):
     return "".join(SR_LAT.get(c, c) for c in s)
+
+
+def rank_of(key, rank):
+    """Frequency rank of a translation; a phrase counts as its rarest word."""
+    words = LEAD.sub("", key).split()
+    return max((rank.get(w, 60000) for w in words), default=60000)
 
 
 def plain(t):
@@ -174,20 +183,23 @@ class Article:
         self.w, self.p = w, p
         self.h = self.gd = self.a = None
         self.senses = None      # from the defining source
-        self.cand = {}          # translation -> score, from the headword's own data
+        self.cand = {}          # translation -> {source: score}, the headword's own data
         self.inv = {}           # translation -> score, read backwards from other articles
         self.src = set()
 
     def add(self, t, weight, src):
         t = t.strip()
-        if not t or len(t) > 60:
+        if not t or len(t) > 60 or t.lower() in STOP:
             return
-        self.cand[t] = self.cand.get(t, 0) + weight
+        # One vote per source: a word repeated under five senses of the same
+        # edition is still one source's word, it only keeps its best place.
+        per_src = self.cand.setdefault(t, {})
+        per_src[src] = max(per_src.get(src, 0), weight)
         self.src.add(src)
 
     def add_inv(self, t, weight):
         t = t.strip()
-        if t and len(t) <= 60:
+        if t and len(t) <= 60 and t.lower() not in STOP:
             self.inv[t] = self.inv.get(t, 0) + weight
 
 
@@ -288,37 +300,44 @@ def finish(a, other_rank):
     """Turn an Article into the published JSON shape, or None if empty."""
     if not a.cand and not a.senses and not a.inv:
         return None
-    # Frequent words first among equally attested ones.
+    # Attestation times frequency: "fille" (rank 178) beats "mademoiselle"
+    # (rank 1 396) unless the sources clearly prefer the rarer word.
     def score(item):
-        t, s = item
-        r = other_rank.get(match_key(t, "x"), 60000)
-        return -(s + 1.0 / (1 + r / 2000))
-    # One spelling per word: "собака" and "соба́ка" add up, and the stressed
-    # spelling is the one shown.
-    merged, shown = {}, {}
+        k, s = item
+        return -(s / (1 + math.log1p(rank_of(k, other_rank) / 200)))
+    # One spelling per word: "собака" and "соба́ка" count as one, and the
+    # stressed spelling is the one shown.
+    shown = {}
 
-    def fold(items):
-        acc = {}
-        for t, s in items:
-            k = plain(t)
-            acc[k] = acc.get(k, 0) + s
-            if k not in shown or ("́" in t and "́" not in shown[k]):
-                shown[k] = t
-        return acc
+    def show(t):
+        k = plain(t)
+        if k not in shown or ("́" in t and "́" not in shown[k]):
+            shown[k] = t
+        return k
 
-    merged = fold(a.cand.items())
-    inv = fold(a.inv.items())
+    votes = {}
+    for t, per_src in a.cand.items():
+        v = votes.setdefault(show(t), {})
+        for src, sc in per_src.items():
+            v[src] = max(v.get(src, 0), sc)
+    merged = {k: sum(v.values()) for k, v in votes.items()}
+    inv = {}
+    for t, sc in a.inv.items():
+        k = show(t)
+        inv[k] = inv.get(k, 0) + sc
     # Words read backwards from other articles ("le" is mentioned in thousands
     # of glosses) only confirm what the headword's own data says, unless the
-    # headword has nothing else or several sources agree on them.
+    # headword has nothing else or several sources agree on them. However often
+    # they are mentioned, they weigh no more than one direct source.
+    cap = W_INV_TABLE
     if merged:
         for k, sc in inv.items():
             if k in merged:
-                merged[k] += sc
+                merged[k] += min(sc, cap)
             elif sc >= 2 * W_INV_TABLE:
-                merged[k] = sc * 0.5
+                merged[k] = min(sc, cap) * 0.5
     else:
-        merged = inv
+        merged = {k: min(sc, cap) for k, sc in inv.items()}
     if inv:
         a.src.add("inv")
     top = [shown[k] for k, _ in sorted(merged.items(), key=score)][:MAX_T]
@@ -411,7 +430,8 @@ def write_pair(pair, d, forms, other_rank):
     return manifest, entries, fmap
 
 
-def build(x):
+def assemble(x):
+    """Both directions for language x, in memory: (ru->x, x->ru, ranks)."""
     rank_ru, rank_x = freq_rank("ru"), freq_rank(x)
     has_x_edition = os.path.isdir(os.path.join(STAGE, x))
 
@@ -471,6 +491,11 @@ def build(x):
                     for t in rus[:3]:
                         a.add(t, W_PIVOT, "pivot")
 
+    return ru, xr, rank_ru, rank_x
+
+
+def build(x):
+    ru, xr, rank_ru, rank_x = assemble(x)
     forms_x = []
     for ed in os.listdir(STAGE):
         forms_x.extend(tuple(p) for p in read(os.path.join(STAGE, ed, f"forms.{x}.jsonl")))

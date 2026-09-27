@@ -2,7 +2,7 @@
   "pair": "tr-ru",
   "buckets": 64,
   "hash": "fnv1a32-utf16",
-  "entries": 26356,
+  "entries": 26359,
   "forms": 1708838,
-  "bytes": 48458594
+  "bytes": 48459065
 }

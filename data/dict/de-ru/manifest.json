@@ -2,7 +2,7 @@
   "pair": "de-ru",
   "buckets": 128,
   "hash": "fnv1a32-utf16",
-  "entries": 93315,
-  "forms": 478938,
-  "bytes": 41576305
+  "entries": 93322,
+  "forms": 478945,
+  "bytes": 41575606
 }
