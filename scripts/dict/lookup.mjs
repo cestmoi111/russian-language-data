@@ -3,7 +3,7 @@
 // needs fetch). Copy it into a consumer or import it from a pinned tag.
 //
 //   import { createDictionary } from "./lookup.mjs";
-//   const dict = createDictionary("https://raw.githubusercontent.com/cestmoi111/russian-language-data/v6/data/dict");
+//   const dict = createDictionary("https://raw.githubusercontent.com/cestmoi111/russian-language-data/v6.1/data/dict");
 //   await dict.lookup("ru-fr", "девушки", ["девушка"]);   // lemmas from your morphology
 //   await dict.lookup("en-ru", "ran");                    // forms are resolved by the data
 

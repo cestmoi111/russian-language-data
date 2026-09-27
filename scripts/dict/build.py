@@ -70,7 +70,7 @@ def key_of(lang, s):
     return bare_ru(s) if lang == "ru" else key_x(s)
 
 
-PAREN = re.compile(r"\([^()]*\)|\[[^\[\]]*\]")
+PAREN = re.compile(r"\([^()]*\)|\[[^\[\]]*\]|（[^（）]*）")
 LEAD = re.compile(r"^(to|a|an|the|le|la|les|l'|l’|un|une|des|du|se|s')\s+", re.I)
 
 
@@ -87,7 +87,7 @@ def terms(gloss, lang):
     -> ["girl", "young woman"]. Long descriptive glosses yield nothing."""
     g = PAREN.sub("", gloss or "")
     out = []
-    for part in re.split(r"[;,]|\bor\b|\bou\b", g):
+    for part in re.split(r"[;,。、；，]|\bor\b|\bou\b", g):
         p = " ".join(part.split()).strip(".:!()[] ").strip()
         if lang == "ru":
             p = ABBR.sub("", p).strip()

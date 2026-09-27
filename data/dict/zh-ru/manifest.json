@@ -2,7 +2,7 @@
   "pair": "zh-ru",
   "buckets": 256,
   "hash": "fnv1a32-utf16",
-  "entries": 175160,
-  "forms": 38834,
-  "bytes": 39613711
+  "entries": 177033,
+  "forms": 39309,
+  "bytes": 39804250
 }

@@ -165,8 +165,8 @@ the rest are names and English words.
 | Latvian (`lv`) | 13,304 | 11,214 | 74.8% | 59.1% | 5 MB |
 | Estonian (`et`) | 13,796 | 11,188 | 73.6% | 70.0% | 7 MB |
 | Turkish (`tr`) | 18,281 | 26,356 | 84.1% | 69.7% | 51 MB |
-| Chinese (`zh`) | 113,844 | 175,160 | 92.0% | 62.6% | 68 MB |
-| Japanese (`ja`) | 22,797 | 16,779 | 85.6% | 47.6% | 12 MB |
+| Chinese (`zh`) | 113,842 | 177,033 | 92.0% | 66.2% | 69 MB |
+| Japanese (`ja`) | 22,802 | 16,905 | 85.6% | 48.4% | 12 MB |
 
 Japanese and Chinese x→ru figures understate: the frequency lists split words differently (分か for 分かる). Serbian in Latin script falls back to the Croatian dictionary.
 
